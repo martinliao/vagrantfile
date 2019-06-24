@@ -1,0 +1,65 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+phpver = 70
+httpport = 80
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "centos/7"
+
+  # config.vm.box_check_update = false
+
+  # config.vm.network "forwarded_port", guest: 80, host: 8080
+
+  # config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 80, host: "#{httpport}"
+  # config.vm.network "private_network", ip: "192.168.33.10"
+  # config.vm.network "public_network"
+
+  # config.vm.synced_folder "../data", "/vagrant_data"
+
+  #config.vm.provider "virtualbox" do |vb|
+  #    # Customize the amount of memory on the VM:
+  #  vb.memory = "1024"
+  #end
+  # https://serverfault.com/questions/453185/vagrant-virtualbox-dns-10-0-2-3-not-working
+  config.vm.provider "virtualbox" do |v|
+    v.cpus = 2
+    v.gui = false
+    v.memory = 2048
+    v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+  end
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo yum update -y
+    sudo yum -y install httpd wget
+    sudo systemctl enable httpd
+    sudo yum -y install epel-release
+    sudo yum -y install http://rpms.remirepo.net/enterprise/remi-release-7.rpm
+    sudo yum -y install yum-utils
+    sudo yum-config-manager --enable remi-php#{phpver}
+    sudo yum -y install php php-mysql php-gd php-pear php-xml php-xmlrpc php-mbstring php-soap php-intl php-opcache php-fileinfo php-mcrypt php-cli php-zip
+    #sudo yum -y install php-mssql
+    sudo yum -y install mariadb-server mariadb
+    sudo systemctl enable mariadb
+    
+    sudo systemctl start httpd
+    echo -e "net.ipv6.conf.all.disable_ipv6 = 1"  | sudo tee -a /etc/sysctl.conf
+    echo -e "net.ipv6.conf.default.disable_ipv6 = 1"  | sudo tee -a /etc/sysctl.conf
+    sudo sysctl -p
+
+    # NodeJS
+    sudo yum -y install gcc-c++ make
+    curl --silent --location https://rpm.nodesource.com/setup_8.x | sudo bash -
+    sudo yum -y install nodejs
+    sudo npm install -g node-gyp grunt grunt-cli
+    curl -sL https://dl.yarnpkg.com/rpm/yarn.repo | sudo tee /etc/yum.repos.d/yarn.repo
+    sudo yum -y install yarn
+    sudo yarn add node-sass
+    
+    sudo timedatectl set-timezone Asia/Taipei
+
+    sudo setenforce 0
+  SHELL
+  config.vm.define "nusphere" do|nusphere|
+    nusphere.vm.provision :shell, path: "moodle-dbg.sh"
+  end
+end
