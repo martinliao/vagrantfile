@@ -1,8 +1,10 @@
 #!/bin/bash
 
-MODVER=31
+MODVER=35
 MODPORT=80
+WEBDIR=clickap
 MODEMAIL=martin@click-ap.com
+PASSWORD="securIty!2019"
 
 # Full unicode support, https://docs.moodle.org/35/en/MySQL_full_unicode_support
 sudo sed -i 's|\[mysqld\]|&\nskip-character-set-client-handshake|' /etc/my.cnf
@@ -19,17 +21,18 @@ sudo sed -i 's|\[client\]|&\ndefault-character-set = utf8mb4|' /etc/my.cnf.d/cli
 sudo systemctl start mariadb
 
 mysql -u root mysql <<EOF
-    UPDATE mysql.user SET Password=PASSWORD('jack5899') WHERE User='root';
+    UPDATE mysql.user SET Password=PASSWORD("$PASSWORD") WHERE User='root';
     FLUSH PRIVILEGES;
 EOF
 
 # download moodle from web
-wget https://download.moodle.org/download.php/direct/stable$MODVER/moodle-latest-$MODVER.tgz
+wget -q https://download.moodle.org/download.php/direct/stable$MODVER/moodle-latest-$MODVER.tgz
 sudo tar zxf moodle-latest-$MODVER.tgz -C /var/www/html # remark v: verbose
+sudo mv /var/www/html/moodle /var/www/html/$WEBDIR
 sudo mkdir /var/www/moodledata
 sudo chown vagrant:apache -R /var/www/html/$WEBDIR /var/www/moodledata
 cd /var/www/html/$WEBDIR
-php admin/cli/install.php --agree-license --non-interactive --lang=en --wwwroot=http://localhost:$MODPORT/$WEBDIR --dataroot=/var/www/moodledata --dbtype=mariadb --dbhost=localhost --dbname=$WEBDIR --dbuser=root --dbpass=jack5899 --fullname=Moodle$MODVER-lst --shortname=Mod$MODVERlst --adminpass=Jack5899! --adminemail=$MODEMAIL
+php admin/cli/install.php --agree-license --non-interactive --lang=en --wwwroot=http://localhost:$MODPORT/$WEBDIR --dataroot=/var/www/moodledata --dbtype=mariadb --dbhost=localhost --dbname=$WEBDIR --dbuser=root --dbpass=$PASSWORD --fullname=Moodle$MODVER-lst --shortname=Mod$MODVERlst --adminpass=$PASSWORD --adminemail=$MODEMAIL
 
 # add $CFG->cachejs, Prevent JS caching
 sudo sed -i '/$CFG->admin/a $CFG->debugdisplay = 1;' config.php
